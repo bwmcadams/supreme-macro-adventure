@@ -1,6 +1,6 @@
 package codes.bytes.macros_intro.macros
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
 
@@ -24,7 +24,7 @@ object helloMacro {
 }
 
 class hello extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro helloMacro.impl
+  def macroTransform(annottees: Any*): Any = macro helloMacro.impl
 }
 
 // vim: set ts=2 sw=2 sts=2 et:

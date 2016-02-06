@@ -1,7 +1,7 @@
 package codes.bytes.macros_intro.macros
 
 import scala.language.experimental.macros
-import scala.reflect.macros.Context
+import scala.reflect.macros.whitebox.Context
 import scala.collection.mutable.{ListBuffer, Stack}
 
 object PrintfMacros {
@@ -12,7 +12,7 @@ object PrintfMacros {
     val Literal(Constant(s_format: String)) = format.tree
     val evals = ListBuffer[ValDef]()
     def precompute(value: Tree, tpe: Type): Ident = {
-      val freshName = TermName(c.fresh("eval$"))
+      val freshName = TermName(c.freshName("eval$"))
       evals += ValDef(Modifiers(), freshName, TypeTree(tpe), value)
       Ident(freshName)
     }
