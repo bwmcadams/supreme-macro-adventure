@@ -1,4 +1,4 @@
-package codes.bytes.macros_intro.test
+package codes.bytes.macros_intro.implementation
 
 import codes.bytes.macros_intro.macros.hello
 

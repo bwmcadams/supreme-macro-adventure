@@ -1,4 +1,4 @@
-package codes.bytes.macros_intro.test
+package codes.bytes.macros_intro.implementation
 
 import scala.reflect.runtime.universe._
 

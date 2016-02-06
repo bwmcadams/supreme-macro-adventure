@@ -19,10 +19,10 @@ lazy val macros = (project in file("macros")).
     name := "macros-talk-macros"
   )
 
-lazy val impl_test = (project in file("implTest")).
+lazy val implementation = (project in file("implementation")).
   settings(commonSettings: _*).
   settings(
-    name := "macros-talk-impl-test"
+    name := "macros-talk-implementation"
   ).
   dependsOn(macros)
 
