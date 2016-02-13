@@ -45,49 +45,12 @@ object ADT {
         case x ⇒
           c.error(c.enclosingPosition, s"Invalid ADT Root ($x)")
           badTree
-        /* My quasiquotes attempt, which wasn't working.
-        /**
-         * OK, acceptable definition for a ADT Root ...
-         * by time we get into macro scala has added 'abstract' in front of trait
-         */
-        case q"sealed abstract trait $name extends ..$parents { ..$body }" :: Nil ⇒
-          // this is a hack but having trouble figuring out how to cleanly return a Tree instead of List[Tree]
-          q"sealed trait $name extends ..$parents { ..$body }"
-        // OK, acceptable definition for a ADT Root
-        case q"abstract class $name extends ..$parents { ..$body }" :: Nil ⇒
-          // this is a hack but having trouble figuring out how to cleanly return a Tree instead of List[Tree]
-          q"abstract class $name extends ..$parents { ..$body }"
-        // OK, acceptable definition for a ADT Root
-        case q"sealed abstract class $name extends ..$parents { ..$body }" :: Nil ⇒
-          // this is a hack but having trouble figuring out how to cleanly return a Tree instead of List[Tree]
-          q"sealed abstract class $name extends ..$parents { ..$body }"
-        case q"class $name extends ..$parents { ..$body }" :: Nil ⇒
-          c.error(c.enclosingPosition, "ADT Root classes must be abstract.")
-          badTree
-        case q"abstract class $name extends ..$parents { ..$body }" :: Nil ⇒
-          c.error(c.enclosingPosition, "ADT Root classes must be sealed .")
-          badTree
-        /**
-         * by time we get into macro scala has added 'abstract' in front of trait
-         */
-        case q"abstract trait $name extends ..$parents { ..$body }" :: Nil ⇒
-          c.error(c.enclosingPosition, "ADT Root traits must be sealed.")
-          badTree
-        case q"object $name extends ..$parents { ..$body }" :: Nil ⇒
-          c.error(c.enclosingPosition, "ADT Roots may not be Objects.")
-          badTree
-        case other ⇒
-          c.error(c.enclosingPosition, s"$other is an unacceptable type for an ADT Root.")
-          badTree*/
       }
     }
 
     c.Expr[Unit](result)
   }
 
-  def classSymbol(c: Context)(a: c.Expr[Any]): c.universe.ClassSymbol = {
-    a.staticType.typeSymbol.asClass
-  }
 }
 
 @compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
