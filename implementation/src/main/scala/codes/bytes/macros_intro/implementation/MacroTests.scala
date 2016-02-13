@@ -4,7 +4,7 @@ import scala.reflect.runtime.universe._
 
 object MacroTests extends App {
 
-  printf("%s: %d", "The Answer", 42)
+  printf("%s: %d", "The Answer\n", 42)
 
   println(showRaw(reify {
     class StringInterp {

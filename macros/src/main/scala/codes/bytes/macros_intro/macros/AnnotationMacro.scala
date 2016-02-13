@@ -2,7 +2,7 @@ package codes.bytes.macros_intro.macros
 
 import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
-import scala.annotation.StaticAnnotation
+import scala.annotation.{compileTimeOnly, StaticAnnotation}
 
 object helloMacro {
   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
@@ -23,6 +23,7 @@ object helloMacro {
   }
 }
 
+@compileTimeOnly("enable macro paradise to expand macro annotations")
 class hello extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro helloMacro.impl
 }
