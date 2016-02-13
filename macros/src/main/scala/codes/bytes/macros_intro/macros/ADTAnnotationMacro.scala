@@ -34,7 +34,9 @@ object ADT {
             c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
           }
           companion match {
-            case Some(mD) ⇒ Block(cD, mD)
+            // properly appears to append class + object in companions but uses a deprecated method
+            // todo: find a good working alternate syntax.
+            case Some(mD) ⇒ Block(cD, mD, Literal(Constant(())))
             case None ⇒ cD
           }
         } else if (!mods.hasFlag(ABSTRACT)) {
@@ -47,7 +49,9 @@ object ADT {
         } else {
           c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
           companion match {
-            case Some(mD) ⇒ Block(cD, mD)
+            // properly appears to append class + object in companions but uses a deprecated method
+            // todo: find a good working alternate syntax.
+            case Some(mD) ⇒ Block(cD, mD, Literal(Constant(())))
             case None ⇒ cD
           }
         }

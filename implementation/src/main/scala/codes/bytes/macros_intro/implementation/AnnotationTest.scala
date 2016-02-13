@@ -7,6 +7,7 @@ object Test extends App {
   println(this.hello)
 }
 
+/*
 
 @ADT
 trait Foo
@@ -28,7 +29,12 @@ class NonAbstractUnsealedClass
 
 
 @ADT
-sealed abstract class TestCompanions
+sealed abstract class TestCompanions {
+  def hello = "Test Companion Class"
+}
 
-object TestCompanions
+object TestCompanions {
+  def hello = "Test Companion Object"
+}
+*/
 
