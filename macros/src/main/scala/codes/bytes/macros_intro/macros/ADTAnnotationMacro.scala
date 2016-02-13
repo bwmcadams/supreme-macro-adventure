@@ -17,25 +17,33 @@ object ADT {
     // check if it meets the requirements for what can be annotated
     // todo - consider a boolean flag that "Fixes" any bug...
     val inputs = annottees.map(_.tree).toList
-    val result = {
+    val result: Tree = {
       inputs match {
         case ClassDef(mods, name, tparams, impl) :: Nil ⇒
-          println(mods)
-          println(name)
           if (mods.hasFlag(TRAIT)) {
-            if (!mods.hasFlag(SEALED))
-              c.error(c.enclosingPosition, "ADT Root traits must be sealed.")
+            if (!mods.hasFlag(SEALED)) {
+              c.error(c.enclosingPosition, s"ADT Root traits (trait $name) must be sealed.")
+              badTree
+            } else {
+              c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
+              ClassDef(mods, name, tparams, impl)
+            }
           } else if (!mods.hasFlag(ABSTRACT)) {
-            c.error(c.enclosingPosition, "ADT Root classes must be abstract.")
+            c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
+            badTree
           } else if (!mods.hasFlag(SEALED)) { // class that's abstract
-            c.error(c.enclosingPosition, "ADT Root classes must be sealed.")
+            c.error(c.enclosingPosition, s"ADT Root classes (abstract class $name) must be sealed.")
+            badTree
+          } else {
+            c.info(c.enclosingPosition, s"ADT Root type $name sanity checks OK.", force = true)
+            ClassDef(mods, name, tparams, impl)
           }
-          ClassDef(mods, name, tparams, impl)
         case ModuleDef(_, name, _) :: Nil ⇒
-          c.error(c.enclosingPosition, "ADT Roots may not be Objects.")
+          c.error(c.enclosingPosition, s"ADT Roots (object $name) may not be Objects.")
           badTree
+        // Not sure what would hit here, I checked and you cannot annotate a package object at all
         case x ⇒
-          println("Other: " + x)
+          c.error(c.enclosingPosition, s"Invalid ADT Root ($x)")
           badTree
         /* My quasiquotes attempt, which wasn't working.
         /**
@@ -82,7 +90,7 @@ object ADT {
   }
 }
 
-@compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros")
+@compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
 class ADT extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro ADT.impl
 }

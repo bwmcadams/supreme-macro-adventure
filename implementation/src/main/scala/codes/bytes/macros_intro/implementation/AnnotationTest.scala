@@ -16,3 +16,10 @@ object Bar
 
 @ADT
 abstract class Baz
+
+@ADT
+sealed trait Spam
+
+@ADT
+sealed abstract class Eggs
+
