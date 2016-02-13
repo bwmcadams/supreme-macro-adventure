@@ -1,3 +1,4 @@
+
 lazy val commonSettings = Seq(
   version := "1.0.0",
   scalaVersion := "2.11.7",
@@ -9,14 +10,15 @@ lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "2.2.4" % "test",
     "org.scala-lang" % "scala-reflect" % "2.11.7"
-  ),
-  addCompilerPlugin("org.scalamacros" % "paradise_2.11.7" % "2.1.0")
+  )
 )
 
 lazy val macros = (project in file("macros")).
   settings(commonSettings: _*).
   settings(
-    name := "macros-talk-macros"
+    name := "macros-talk-macros",
+    libraryDependencies +=
+      compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
   )
 
 lazy val implementation = (project in file("implementation")).
