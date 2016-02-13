@@ -26,9 +26,9 @@ sealed abstract class Eggs
 @ADT
 class NonAbstractUnsealedClass
 
-/*
+
 @ADT
 sealed abstract class TestCompanions
 
 object TestCompanions
-*/
+

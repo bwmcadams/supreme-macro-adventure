@@ -33,7 +33,10 @@ object ADT {
           else {
             c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
           }
-          cD
+          companion match {
+            case Some(mD) ⇒ Block(cD, mD)
+            case None ⇒ cD
+          }
         } else if (!mods.hasFlag(ABSTRACT)) {
           c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
           badTree
@@ -43,7 +46,10 @@ object ADT {
           badTree
         } else {
           c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
-          cD
+          companion match {
+            case Some(mD) ⇒ Block(cD, mD)
+            case None ⇒ cD
+          }
         }
       }
 
