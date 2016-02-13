@@ -23,3 +23,5 @@ sealed trait Spam
 @ADT
 sealed abstract class Eggs
 
+@ADT
+class NonAbstractUnsealedClass

@@ -21,13 +21,11 @@ object ADT {
       inputs match {
         case ClassDef(mods, name, tparams, impl) :: Nil ⇒
           if (mods.hasFlag(TRAIT)) {
-            if (!mods.hasFlag(SEALED)) {
+            if (!mods.hasFlag(SEALED))
               c.error(c.enclosingPosition, s"ADT Root traits (trait $name) must be sealed.")
-              badTree
-            } else {
+            else
               c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
-              ClassDef(mods, name, tparams, impl)
-            }
+            ClassDef(mods, name, tparams, impl)
           } else if (!mods.hasFlag(ABSTRACT)) {
             c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
             badTree
@@ -35,7 +33,7 @@ object ADT {
             c.error(c.enclosingPosition, s"ADT Root classes (abstract class $name) must be sealed.")
             badTree
           } else {
-            c.info(c.enclosingPosition, s"ADT Root type $name sanity checks OK.", force = true)
+            c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
             ClassDef(mods, name, tparams, impl)
           }
         case ModuleDef(_, name, _) :: Nil ⇒
