@@ -30,11 +30,11 @@ class NonAbstractUnsealedClass
 
 @ADT
 sealed abstract class TestCompanions {
-  def hello = "Test Companion Class"
+  def check = "Test Companion Class"
 }
 
 object TestCompanions {
-  def hello = "Test Companion Object"
+  def check = "Test Companion Object"
 }
 */
 

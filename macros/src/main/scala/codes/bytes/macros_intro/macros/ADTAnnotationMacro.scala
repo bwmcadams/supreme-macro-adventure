@@ -36,7 +36,7 @@ object ADT {
           companion match {
             // properly appears to append class + object in companions but uses a deprecated method
             // todo: find a good working alternate syntax.
-            case Some(mD) ⇒ Block(cD, mD, Literal(Constant(())))
+            case Some(mD) ⇒ q"$cD; $mD"
             case None ⇒ cD
           }
         } else if (!mods.hasFlag(ABSTRACT)) {
@@ -51,7 +51,7 @@ object ADT {
           companion match {
             // properly appears to append class + object in companions but uses a deprecated method
             // todo: find a good working alternate syntax.
-            case Some(mD) ⇒ Block(cD, mD, Literal(Constant(())))
+            case Some(mD) ⇒ q"$cD; $mD"
             case None ⇒ cD
           }
         }
