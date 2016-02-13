@@ -18,24 +18,43 @@ object ADT {
     // todo - consider a boolean flag that "Fixes" any bug...
     val inputs = annottees.map(_.tree).toList
     val result: Tree = {
-      inputs match {
-        case ClassDef(mods, name, tparams, impl) :: Nil ⇒
-          if (mods.hasFlag(TRAIT)) {
-            if (!mods.hasFlag(SEALED))
-              c.error(c.enclosingPosition, s"ADT Root traits (trait $name) must be sealed.")
-            else
-              c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
-            ClassDef(mods, name, tparams, impl)
-          } else if (!mods.hasFlag(ABSTRACT)) {
-            c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
-            badTree
-          } else if (!mods.hasFlag(SEALED)) { // class that's abstract
-            c.error(c.enclosingPosition, s"ADT Root classes (abstract class $name) must be sealed.")
-            badTree
-          } else {
-            c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
-            ClassDef(mods, name, tparams, impl)
+      def validateClassDef(
+        cD: c.universe.ClassDef,
+        mods: c.universe.Modifiers,
+        name: c.universe.TypeName,
+        tparams: List[c.universe.TypeDef],
+        impl: c.universe.Template,
+        companion: Option[ModuleDef]): c.universe.Tree = {
+
+        if (mods.hasFlag(TRAIT)) {
+          if (!mods.hasFlag(SEALED)) {
+            c.error(c.enclosingPosition, s"ADT Root traits (trait $name) must be sealed.")
           }
+          else {
+            c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
+          }
+          cD
+        } else if (!mods.hasFlag(ABSTRACT)) {
+          c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
+          badTree
+        } else if (!mods.hasFlag(SEALED)) {
+          // class that's abstract
+          c.error(c.enclosingPosition, s"ADT Root classes (abstract class $name) must be sealed.")
+          badTree
+        } else {
+          c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
+          cD
+        }
+      }
+
+      inputs match {
+        case (cD @ ClassDef(mods, name, tparams, impl)) :: Nil ⇒
+          validateClassDef(cD, mods, name, tparams, impl, companion = None)
+        // annotated class with companion object.
+        // In the case of an annotated class/object w/ a companion, the companion is passed to
+        // annottees. We *are* assuming the class is one annotated here.
+        case (cD @ ClassDef(mods, name, tparams, impl)) :: (mD: ModuleDef) :: Nil ⇒
+          validateClassDef(cD, mods, name, tparams, impl, companion = Some(mD))
         case ModuleDef(_, name, _) :: Nil ⇒
           c.error(c.enclosingPosition, s"ADT Roots (object $name) may not be Objects.")
           badTree
@@ -46,13 +65,23 @@ object ADT {
       }
     }
 
-    c.Expr[Unit](result)
+    c.Expr[Any](result)
   }
 
 }
 
+/**
+ * From the Macro Paradise Docs...
+ *
+ * note the @compileTimeOnly annotation. It is not mandatory, but is recommended to avoid confusion.
+ * Macro annotations look like normal annotations to the vanilla Scala compiler, so if you forget
+ * to enable the macro paradise plugin in your build, your annotations will silently fail to expand.
+ * The @compileTimeOnly annotation makes sure that no reference to the underlying definition is
+ * present in the program code after typer, so it will prevent the aforementioned situation
+ * from happening.
+ */
 @compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
-class ADT extends StaticAnnotation {
+final class ADT extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro ADT.impl
 }
 // vim: set ts=2 sw=2 sts=2 et:
