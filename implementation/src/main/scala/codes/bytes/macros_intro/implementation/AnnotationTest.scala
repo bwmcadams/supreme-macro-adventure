@@ -7,8 +7,12 @@ object Test extends App {
   println(this.hello)
 }
 
-@ADT
-trait Bar
 
 @ADT
-object Foo
+trait Foo
+
+@ADT
+object Bar
+
+@ADT
+abstract class Baz
