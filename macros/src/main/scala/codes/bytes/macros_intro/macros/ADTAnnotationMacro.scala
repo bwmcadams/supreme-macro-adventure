@@ -11,11 +11,8 @@ object ADT {
     import c.universe._
     import Flag._
 
-    // the errors should cause us to stop before this, but needed to match up our match type
-    val badTree = reify {}.tree
 
     // check if it meets the requirements for what can be annotated
-    // todo - consider a boolean flag that "Fixes" any bug...
     val inputs = annottees.map(_.tree).toList
     val result: Tree = {
       def validateClassDef(
@@ -26,6 +23,7 @@ object ADT {
         impl: c.universe.Template,
         companion: Option[ModuleDef]): c.universe.Tree = {
 
+
         if (mods.hasFlag(TRAIT)) {
           if (!mods.hasFlag(SEALED)) {
             c.error(c.enclosingPosition, s"ADT Root traits (trait $name) must be sealed.")
@@ -34,23 +32,39 @@ object ADT {
             c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
           }
           companion match {
-            // properly appears to append class + object in companions but uses a deprecated method
-            // todo: find a good working alternate syntax.
+            /**
+             * According to the docs, if you annotate a *class* with a companion,
+             * the class and companion will be sent in (e.g., List(class, object) for
+             * entry Tree. If you annotate an *object* with a companion, only the object
+             * is passed in.
+             *
+             *  Using ClassDef match, Scala will refuse to accept returned Tree unless it
+             *  includes both companions sent in. For QuasiQuotes it seems to ignore that,
+             *  yet the object still works fine after Macro transform.
+             */
             case Some(mD) ⇒ q"$cD; $mD"
             case None ⇒ cD
           }
         } else if (!mods.hasFlag(ABSTRACT)) {
           c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
-          badTree
+          cD
         } else if (!mods.hasFlag(SEALED)) {
           // class that's abstract
           c.error(c.enclosingPosition, s"ADT Root classes (abstract class $name) must be sealed.")
-          badTree
+          cD
         } else {
           c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
           companion match {
-            // properly appears to append class + object in companions but uses a deprecated method
-            // todo: find a good working alternate syntax.
+            /**
+             * According to the docs, if you annotate a *class* with a companion,
+             * the class and companion will be sent in (e.g., List(class, object) for
+             * entry Tree. If you annotate an *object* with a companion, only the object
+             * is passed in.
+             *
+             *  Using ClassDef match, Scala will refuse to accept returned Tree unless it
+             *  includes both companions sent in. For QuasiQuotes it seems to ignore that,
+             *  yet the object still works fine after Macro transform.
+             */
             case Some(mD) ⇒ q"$cD; $mD"
             case None ⇒ cD
           }
@@ -65,13 +79,18 @@ object ADT {
         // annottees. We *are* assuming the class is one annotated here.
         case (cD @ ClassDef(mods, name, tparams, impl)) :: (mD: ModuleDef) :: Nil ⇒
           validateClassDef(cD, mods, name, tparams, impl, companion = Some(mD))
-        case ModuleDef(_, name, _) :: Nil ⇒
+        case (o @ ModuleDef(_, name, _)) :: Nil ⇒
           c.error(c.enclosingPosition, s"ADT Roots (object $name) may not be Objects.")
-          badTree
+          o
         // Not sure what would hit here, I checked and you cannot annotate a package object at all
-        case x ⇒
-          c.error(c.enclosingPosition, s"Invalid ADT Root ($x)")
-          badTree
+        case x :: Nil ⇒
+          c.error(c.enclosingPosition, s"Invalid ADT Root ($x).")
+          x
+        case Nil ⇒
+          c.error(c.enclosingPosition, "Cannot validate ADT Root of empty Tree.")
+          // the errors should cause us to stop before this,
+          // but needed to match up our match type
+          reify {}.tree
       }
     }
 
