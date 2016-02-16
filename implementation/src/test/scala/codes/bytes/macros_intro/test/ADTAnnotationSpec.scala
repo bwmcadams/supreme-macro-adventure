@@ -45,7 +45,7 @@ class ADTAnnotationSpec extends FlatSpec with MustMatchers {
       |  var testAnnotatingVar = "Mutability *and* annotative failure."
       |
       |}
-    """.stripMargin
+    """.stripMargin mustNot compile
   }
 
   it should "Approve a sealed trait" in {
