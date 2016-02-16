@@ -7,14 +7,7 @@ object Test extends App {
   println(this.hello)
 }
 
-@ADT
-trait Foo
 
-@ADT
-object Bar
-
-@ADT
-abstract class Baz
 
 @ADT
 sealed trait Spam {
@@ -26,12 +19,6 @@ final case class SpamLeft(x: Int)
 
 @ADT
 sealed abstract class Eggs
-
-@ADT
-class NonAbstractUnsealedClass {
-  def testBodyItem = 5
-}
-
 
 @ADT
 sealed abstract class TestCompanionsClass {
@@ -52,14 +39,3 @@ object TestCompanionsTrait {
   def check = "Test Companion Object"
 }
 
-object TestValsAndDefs {
-  @ADT
-  def testAnnotatingMethod = "This should blow up spectacularly."
-
-  @ADT
-  val testAnnotatingVal = "This should not be allowed."
-
-  @ADT
-  var testAnnotatingVar = "Mutability *and* annotative failure."
-
-}
