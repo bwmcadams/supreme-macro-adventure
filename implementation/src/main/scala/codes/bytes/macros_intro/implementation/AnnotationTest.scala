@@ -1,22 +1,22 @@
 package codes.bytes.macros_intro.implementation
 
-import codes.bytes.macros_intro.macros.{ADT_QQ, ADT, hello}
+import codes.bytes.macros_intro.macros.{ADT, hello}
 
 @hello
 object Test extends App {
   println(this.hello)
 }
 
-@ADT_QQ
+@ADT
 trait Foo
 
-@ADT_QQ
+@ADT
 object Bar
 
-@ADT_QQ
+@ADT
 abstract class Baz
 
-@ADT_QQ
+@ADT
 sealed trait Spam {
   def x: Int
 }
@@ -24,16 +24,16 @@ sealed trait Spam {
 final case class SpamRight(x: Int)
 final case class SpamLeft(x: Int)
 
-@ADT_QQ
+@ADT
 sealed abstract class Eggs
 
-@ADT_QQ
+@ADT
 class NonAbstractUnsealedClass {
   def testBodyItem = 5
 }
 
 
-@ADT_QQ
+@ADT
 sealed abstract class TestCompanionsClass {
   def check = "Test Companion Class"
 }
@@ -43,7 +43,7 @@ object TestCompanionsClass {
 }
 
 
-@ADT_QQ
+@ADT
 sealed abstract class TestCompanionsTrait {
   def check = "Test Companion Trait"
 }
@@ -52,14 +52,14 @@ object TestCompanionsTrait {
   def check = "Test Companion Object"
 }
 
-package object foo {
-  @ADT_QQ
+object TestValsAndDefs {
+  @ADT
   def testAnnotatingMethod = "This should blow up spectacularly."
 
-  @ADT_QQ
+  @ADT
   val testAnnotatingVal = "This should not be allowed."
 
-  @ADT_QQ
-  val testAnnotatingVar = "Mutability *and* annotative failure."
+  @ADT
+  var testAnnotatingVar = "Mutability *and* annotative failure."
 
 }

@@ -23,7 +23,7 @@ object ADT_QQ {
             c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
           }
           t
-        case (cls @ q"$mods class $name") :: Nil ⇒
+        case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil ⇒
           if (!mods.hasFlag(ABSTRACT)) {
             c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
           } else if (!mods.hasFlag(SEALED)) {
@@ -46,10 +46,20 @@ object ADT_QQ {
         case (o @ q"$mods object $name") :: Nil ⇒
           c.error(c.enclosingPosition, s"ADT Roots (object $name) may not be Objects.")
           o
-        // TODO: We need to check for defs and vals, which would hit this
+        // method definition
+        case (d @ q"def $name = $body") :: Nil ⇒
+          c.error(c.enclosingPosition, s"ADT Roots (def $name) may not be Methods.")
+          d
+        // immutable variable definition
+        case (v @ q"val $name = $value") :: Nil ⇒
+          c.error(c.enclosingPosition, s"ADT Roots (val $name) may not be Variables.")
+          v
+        case (v @ q"var $name = $value") :: Nil ⇒
+          c.error(c.enclosingPosition, s"ADT Roots (var $name) may not be Variables.")
+          v
         // I checked and you cannot annotate a package object at all
         case x :: Nil ⇒
-          c.error(c.enclosingPosition, s"Invalid ADT Root ($x)")
+          c.error(c.enclosingPosition, s"! Invalid ADT Root ($x) ${x.getClass}")
           x
         case Nil ⇒
           c.error(c.enclosingPosition, s"Cannot ADT Validate an empty Tree.")
@@ -74,6 +84,6 @@ object ADT_QQ {
  */
 @compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
 final class ADT_QQ extends StaticAnnotation {
-  def macroTransform(annottees: Any*): Any = macro ADT.impl
+  def macroTransform(annottees: Any*): Any = macro ADT_QQ.impl
 }
 // vim: set ts=2 sw=2 sts=2 et:

@@ -82,9 +82,18 @@ object ADT {
         case (o @ ModuleDef(_, name, _)) :: Nil ⇒
           c.error(c.enclosingPosition, s"ADT Roots (object $name) may not be Objects.")
           o
+        case (d @ DefDef(mods, name, _, _, _, _)) :: Nil ⇒
+          c.error(c.enclosingPosition, s"ADT Roots (def $name) may not be Methods.")
+          d
+        case (d @ ValDef(mods, name, _, _)) :: Nil ⇒
+          if (mods.hasFlag(Flag.MUTABLE))
+            c.error(c.enclosingPosition, s"ADT Roots (var $name) may not be Variables.")
+          else
+            c.error(c.enclosingPosition, s"ADT Roots (val $name) may not be Variables.")
+          d
         // Not sure what would hit here, I checked and you cannot annotate a package object at all
         case x :: Nil ⇒
-          c.error(c.enclosingPosition, s"Invalid ADT Root ($x).")
+          c.error(c.enclosingPosition, s"Invalid ADT Root ($x) [${x.getClass}].")
           x
         case Nil ⇒
           c.error(c.enclosingPosition, "Cannot validate ADT Root of empty Tree.")
