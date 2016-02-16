@@ -3,7 +3,7 @@ package codes.bytes.macros_intro.macros
 import scala.annotation.{ compileTimeOnly, StaticAnnotation }
 import scala.language.postfixOps
 
-import scala.reflect.macros.whitebox.Context
+import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
 
 object ADT_QQ {
