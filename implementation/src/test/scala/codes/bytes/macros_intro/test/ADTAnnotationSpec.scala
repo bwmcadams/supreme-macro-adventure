@@ -1,5 +1,6 @@
 package codes.bytes.macros_intro.test
 
+import codes.bytes.macros_intro.macros.ADTMacros
 import codes.bytes.macros_intro.macros.ADT
 import org.scalatest.{FlatSpec, MustMatchers}
 

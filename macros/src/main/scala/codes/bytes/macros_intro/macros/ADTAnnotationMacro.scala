@@ -1,21 +1,22 @@
 package codes.bytes.macros_intro.macros
 
-import scala.annotation.{ compileTimeOnly, StaticAnnotation }
-import scala.language.postfixOps
-
-import scala.reflect.macros.whitebox.Context
+import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
+import scala.language.postfixOps
+import scala.reflect.macros.whitebox
+import scala.reflect.macros.whitebox.Context
 
-object ADT {
-  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+
+object ADTMacros {
+  def annotation_impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     import Flag._
 
 
-    val p = c.enclosingPosition.withPoint(c.enclosingPosition.point + 1)
+    val p = c.enclosingPosition
 
-    // check if it meets the requirements for what can be annotated
     val inputs = annottees.map(_.tree).toList
+
     val result: Tree = {
       def validateClassDef(
         cD: c.universe.ClassDef,
@@ -24,6 +25,7 @@ object ADT {
         tparams: List[c.universe.TypeDef],
         impl: c.universe.Template,
         companion: Option[ModuleDef]): c.universe.Tree = {
+
 
         if (mods.hasFlag(TRAIT)) {
           if (!mods.hasFlag(SEALED)) {
@@ -107,6 +109,23 @@ object ADT {
     c.Expr[Any](result)
   }
 
+  def dump_impl[T: c.WeakTypeTag](c: whitebox.Context): c.Expr[Set[String]] = {
+
+    import c.universe._
+
+    val p = c.enclosingPosition
+
+    val typ = c.weakTypeOf[T].typeSymbol.asClass
+
+    val subs = typ.knownDirectSubclasses.map(_.fullName)
+
+    if (subs.isEmpty)
+      c.warning(p, s"Cannot locate subclasses for ${typ.fullName}; this may be related to SI-7046. Try invoking `dump_tree` after the ADT compilation site")
+
+    c.Expr[Set[String]](q"$subs")
+  }
+
+  def dumpTree[T]: Set[String] = macro dump_impl[T]
 }
 
 /**
@@ -121,6 +140,6 @@ object ADT {
  */
 @compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
 final class ADT extends StaticAnnotation {
-  def macroTransform(annottees: Any*): Any = macro ADT.impl
+  def macroTransform(annottees: Any*): Any = macro ADTMacros.annotation_impl
 }
 // vim: set ts=2 sw=2 sts=2 et:

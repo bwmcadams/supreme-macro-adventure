@@ -2,9 +2,11 @@ package codes.bytes.macros_intro.implementation
 
 import scala.reflect.runtime.universe._
 
+import codes.bytes.macros_intro.macros.PrintfMacros
+
 object MacroTests extends App {
 
-  printf("%s: %d", "The Answer\n", 42)
+  PrintfMacros.printf("%s: %d\n", "The Answer", 42)
 
   println(showRaw(reify {
     class StringInterp {
