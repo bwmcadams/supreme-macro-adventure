@@ -1,4 +1,4 @@
-footer: NY Scala Meetup - Oct. '15
+footer: The "WTF" of Macros - NEScala '16
 slidenumbers: true
 autoscale: true
 build-lists: true
@@ -27,13 +27,27 @@ build-lists: true
 
 ### But Seriously, What *Are* Macros?
 
-- ‘metaprogramming’, from the Latin: ‘WTF?’. I mean, “code that writes code”.
+- ‘metaprogramming’, from the Latin: ‘WTF?’.
+- I mean, “code that writes code”.
 - Write ‘extensions’ to Scala which expand out to more complicated code when used. Evaluated at compile time.
-- Facility for us to write syntax that feels “built in” to Scala, e.g. String Interpolation:
+
+---
+
+### Examples of Macros
+
+- Facility for us to write powerful new syntax that feels ‘built-in’, such as Shapeless' “This Shouldn't Compile” `illTyped` macro...
 
     ```scala
-    s"Foo: $foo Bar: $bar FooBar: ${foo + bar}"
+    scala> illTyped { """1+1 : Int""" }
+      <console>:19: error: Type-checking succeeded unexpectedly.
+      Expected some error.
+         illTyped { """1+1 : Int""" }
+                ^
     ```
+
+---
+
+### Examples of Macros
 - Annotations that rewrite / expand code:
 
     ```scala
@@ -42,16 +56,17 @@ build-lists: true
         println(this.hello)
       }
     ```
+
 - ... And a lot more.
 
 ---
 
-### Disclaimer: I'm Barely Qualifed To Speak About Macros
+### I'm Hoping To Make This Easy For You
 
 ![right](images/clockwork-eyes.gif)
 
-- I'm fairly new to Macros – there is a ton to absorb and some of it feels like deep, deep, black magic.
-- On the other hand, so *many* Macros talks are given by Deeply Scary Sorcerers and Demigods... who sometimes forget how hard this stuff can be to learn.
+- I'm pretty new to this Macro thing, and hoping to share knowledge from a beginner's standpoint.
+- Without naming names, *many* Macros talks are given by Deeply Scary Sorcerers and Demigods who sometimes forget how hard this stuff is for newbies.
 - Let's take a look at this through *really fresh*, profusely bleeding, eyeballs.
 
 ^ ... and learn just enough to be dangerous to ourselves (and others).
@@ -60,16 +75,18 @@ build-lists: true
 
 ### Once Upon A Time...
 
-- We could pull off some (most?) of what we can do with Macros, by writing compiler plugins.
+- We could pull off a lot of what we can do with Macros, by writing compiler plugins.
 - Esoteric, harder to ship (i.e. user must include a compiler plugin), not a lot of docs or examples.
 - Required *deep* knowledge of the AST: Essentially generating new Scala by hand-coding ASTs.[^†]
-- I've done a little bit of compiler plugin work: the AST can be tough to deal with.
+- I've done a little bit of compiler plugin work: the AST can be tough to deal with.[^§]
 
 ^ Think of AST as nested classes that represent a tree to be converted to bytecode... or javascript!
 
 ^ Once, I helped maintain a Compiler Plugin to generate Syntax Diagrams from Parser Combinators...
 
 [^†]: Abstract Syntax Tree. A simple “tree” of case-class like objects to be converted to bytecode... or JavaScript.
+
+[^§]: Some of the cool stuff in Macros like Quasiquotes can be used in Compiler Plugins now, too.
 
 ---
 
@@ -129,6 +146,172 @@ class StringInterp {
 ---
 
 ![fit original](images/futurama-hailscience.gif)
+
+
+---
+### Macro Paradise
+
+- It is worth mentioning that the Macro project for Scala is evolving *quickly*.
+- They release and add new features *far more frequently* than Scala does.
+- “Macro Paradise” is a compiler plugin meant to bring the Macro improvements into Scala[^¶] as they become available.
+- One of the features currently in Macro Paradise is Macro Annotations.
+- You can learn more about Macro Paradise at [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
+
+
+[^¶]: focused on reliability with the current production release of Scala
+
+---
+
+### Macro Annotations
+#### ADT Validation
+
+- Macro Annotations are designed to let us build annotations that expand via Macros.
+- The possibilites are endless, but I've written a Macro that verifies the "Root" type of an ADT is valid. The rules:
+    - The root type must be either a trait or an abstract class.
+    - The root type must be sealed.
+- I've done this with AST manipulation to demo what that looks like.
+
+---
+
+### Macro Annotations
+#### ADT Validation
+
+- You can find this code at [https://github.com/bwmcadams/supreme-macro-adventure](https://github.com/bwmcadams/supreme-macro-adventure)
+    - I was feeling whimsical, and used part of a suggested random repo name from Github...
+- Let's look at some chunks of ScalaTest “should compile” / “should not compile” code I use to validate my ADT Macro
+
+---
+
+### Macro Annotations
+#### ADT Validation
+
+```scala
+  "A test of annotating stuff with the ADT Compiler Annotation" should "Reject an unsealed trait" in {
+    """
+      | @ADT trait Foo
+    """.stripMargin mustNot compile
+  }
+
+   it should "Reject a Singleton Object" in {
+    """
+      | @ADT object Bar
+    """.stripMargin mustNot compile
+  }
+```
+
+---
+
+### Macro Annotations
+#### ADT Validation
+
+```scala
+  it should "Approve a sealed trait" in {
+    """
+      | @ADT sealed trait Spam {
+      |   def x: Int
+      | }
+    """.stripMargin must compile
+  }
+
+  it should "Approve a sealed, abstract class" in {
+    """
+      | @ADT sealed abstract class Eggs
+    """.stripMargin must compile
+  }
+
+ ```
+
+---
+### ADT Validation
+
+- So how does it all work?
+- First, we need to define an annotation:
+
+```scala
+@compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
+final class ADT extends StaticAnnotation {
+  def macroTransform(annottees: Any*): Any = macro ADTMacros.annotation_impl
+}
+```
+
+- `@compileTimeOnly` makes sure we've enabled Macro Paradise: otherwise, our annotation fails to expand at compile time.
+- `macroTransform` delegates to an actual Macro implementation which validates our ‘annottees’.
+
+---
+### ADT Validation
+
+- A quick note on our ‘annottees’ variable...
+- This annotation macro is called *once per annotated class*. The fact that it has to take varargs can be confusing.
+- There is one case when we'll get more than one ‘annottee’: Companion Objects.
+- If you annotate a class with a companion object, *both* are passed in.
+- If you annotate an object with a companion class, only the object is passed in.
+
+---
+### The Code...
+
+```scala
+  def annotation_impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+    import c.universe._
+    import Flag._
+
+    val p = c.enclosingPosition
+
+    val inputs = annottees.map(_.tree).toList
+
+    val result: Tree = {
+      // Tree manipulation code
+    }
+
+    // if no errors, return the original syntax tree
+    c.Expr[Any](result)
+  }
+
+```
+
+^ Context comes in automatically with Macros.
+
+---
+### Matching Our Tree
+
+```scala
+  inputs match {
+    case (cD @ ClassDef(mods, name, tparams, impl)) :: Nil ⇒
+      validateClassDef(cD, mods, name, tparams, impl, companion = None)
+    // annotated class with companion object.
+    case (cD @ ClassDef(mods, name, tparams, impl)) :: (mD: ModuleDef) :: Nil ⇒
+      validateClassDef(cD, mods, name, tparams, impl, companion = Some(mD))
+    case (o @ ModuleDef(_, name, _)) :: Nil ⇒
+      c.error(p, s"ADT Roots (object $name) may not be Objects.")
+      o
+    // ... corner cases to follow
+```
+
+---
+
+### Matching Our Tree
+
+```scala
+    case (d @ DefDef(mods, name, _, _, _, _)) :: Nil ⇒
+      c.error(p, s"ADT Roots (def $name) may not be Methods.")
+      d
+    case (d @ ValDef(mods, name, _, _)) :: Nil ⇒
+      if (mods.hasFlag(Flag.MUTABLE)) c.error(p, s"ADT Roots (var $name) may not be Variables.")
+      else c.error(p, s"ADT Roots (val $name) may not be Variables.")
+      d
+    // Not sure what would hit here, I checked and you cannot annotate a package object at all
+    case x :: Nil ⇒
+      c.error(p, s"Invalid ADT Root ($x) [${x.getClass}].")
+      x
+    case Nil ⇒
+      c.error(p, "Cannot validate ADT Root of empty Tree.")
+      // the errors should cause us to stop before this but needed to match up our match type
+      reify {}.tree
+  }
+```
+
+---
+
+![original fit](images/brilliant-pinkie-pie.png)
 
 ---
 
@@ -280,18 +463,18 @@ println(showRaw(reify {
 
 ---
 
-### quasiquotes for More Sanity
+### Quasiquotes for More Sanity
 
 - There's really no way – yet – to avoid the AST Completely. But the Macro system continues to improve to give us ways to use it less and less.
-- quasiquotes, added in Scala 2.11, lets us write the equivalent of String Interpolation code that ‘evals’ to a Syntax Tree.
-- We aren't going to go through a Macro build with quasiquotes (yet), but let's look at what they do in the console...
+- Quasiquotes, added in Scala 2.11, lets us write the equivalent of String Interpolation code that ‘evals’ to a Syntax Tree.
+- We aren't going to go through a Macro build with Quasiquotes (yet), but let's look at what they do in the console...
 
 ---
 
-### quasiquotes in Action
+### Quasiquotes in Action
 #### Setting Up Our Imports
 
-There are some implicits we need in scope for QuasiQuotes Ah, the joy of imports...
+There are some implicits we need in scope for Quasiquotes Ah, the joy of imports...
 
 ```scala
 import language.experimental.macros
@@ -304,10 +487,10 @@ import ru._
 Now we're ready to generate some Syntax Trees!
 
 ---
-### quasiquotes in Action
+### Quasiquotes in Action
 #### Writing Some Trees
 
-quasiquotes look like String Interpolation, but we place a `q` in front of our string instead of `s`:
+Quasiquotes look like String Interpolation, but we place a `q` in front of our string instead of `s`:
 
 ```scala
 scala> q"def echo(str: String): String = str"
@@ -318,7 +501,7 @@ res4: reflect.runtime.universe.DefDef =
 ```
 
 ---
-### quasiquotes in Action
+### Quasiquotes in Action
 #### Writing Some Trees
 
 ```scala
@@ -340,9 +523,9 @@ case class OMGWTFBBQ extends Exception
 
 
 ---
-### Extracting with quasiquotes
+### Extracting with Quasiquotes
 
-It turns out, quasiquotes can do extraction too, which I find sort of fun.
+It turns out, Quasiquotes can do extraction too, which I find sort of fun.
 
 ```scala
 scala> val q"case class $cname(..$params) extends $parent with ..$traits { ..$body }" = wtfException
@@ -354,7 +537,7 @@ body: List[reflect.runtime.universe.Tree] = List()
 ```
 
 
-^ There's a pretty cool demo of quasiquotes to write a *Macro* yet to come...
+^ There's a pretty cool demo of Quasiquotes to write a *Macro* yet to come...
 
 ---
 
@@ -362,107 +545,6 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ---
 
-### Macro Paradise
-
-- It is worth mentioning that the Macro project for Scala is evolving *quickly*.
-- They release and add new features *far more frequently* than Scala does.
-- “Macro Paradise” is a compiler plugin meant to bring the Macro improvements into Scala[^¶] as they become available.
-- One of the features currently in Macro Paradise is Macro Annotations.
-- You can learn more about Macro Paradise at [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
-
-
-[^¶]: focused on reliability with the current production release of Scala
-
----
-
-### Macro Annotations
-
-- Macro Annotations are designed to let us build annotations that expand via Macros.
-- The possibilites are endless, but there's a great demo repository that shows how to combine Annotations & quasiquotes to rewrite a class...
-- You can find this code at [https://github.com/scalamacros/sbt-example-paradise](https://github.com/scalamacros/sbt-example-paradise)
-
----
-
-### Macro Annotations
-#### A Very Basic Demo
-
-At the beginning of the talk, I showed an odd piece of code. It was annotated, but also referenced a variable that didn't exist:
-
-```scala
-@hello
-object Test extends App {
-  println(this.hello)
-}
-```
-
-`hello` doesn't appear to be a member of `Test`. It certainly *isn't* defined in `App`.
-Instead, the `@hello` annotation represents a Macro, which rewrites our object definition.
-
----
-### Macro Annotations
-#### The `hello` Macro
-
-```scala
-import scala.reflect.macros.Context
-import scala.language.experimental.macros
-import scala.annotation.StaticAnnotation
-
-class hello extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro helloMacro.impl
-}
-```
-
-The annotation is declared; Let's look at the implementation.
-
----
-
-### Macro Annotations
-#### The `hello` Macro
-
-```scala
-
-object helloMacro {
-  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
-    import c.universe._
-    import Flag._
-    val result = ??? // we'll look at this in a second
-    c.Expr[Any](result)
-  }
-}
-```
-
-All we need now is the code for `result` to generate an AST.
-
----
-
-### Macro Annotations
-#### The `hello` Macro
-
-Finally, the value of result is generated via quasiquotes, rewriting the annotated object:
-
-```scala
-    val result = {
-      annottees.map(_.tree).toList match {
-        case q"object $name extends ..$parents { ..$body }" :: Nil =>
-          q"""
-            object $name extends ..$parents {
-              def hello: ${typeOf[String]} = "hello"
-              ..$body
-            }
-          """
-      }
-    }
-```
-
-
-^ From the compiler standpoint, our annotated object *has* the `hello` member when it goes looking for it.
-
-
----
-
-![original fit](images/brilliant-pinkie-pie.png)
-
----
 
 ### Closing Thoughts
 
