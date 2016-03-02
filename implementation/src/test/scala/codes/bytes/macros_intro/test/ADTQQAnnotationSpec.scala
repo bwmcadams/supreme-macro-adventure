@@ -1,10 +1,10 @@
 package codes.bytes.macros_intro.test
 
 import codes.bytes.macros_intro.macros.ADTMacros
-import codes.bytes.macros_intro.macros.ADT
+import codes.bytes.macros_intro.macros.{ADT_QQ ⇒ ADT}
 import org.scalatest.{FlatSpec, MustMatchers}
 
-class ADTAnnotationSpec extends FlatSpec with MustMatchers {
+class ADTQQAnnotationSpec extends FlatSpec with MustMatchers {
 
 
   "A test of annotating stuff with the ADT Compiler Annotation" should "Reject an unsealed trait" in {
