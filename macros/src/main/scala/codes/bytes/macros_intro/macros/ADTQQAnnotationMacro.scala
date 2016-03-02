@@ -16,15 +16,13 @@ object ADT_QQ {
     val inputs = annottees.map(_.tree).toList
 
     val result: Tree = inputs match {
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil
-          if mods.hasFlag(SEALED) ⇒
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil if mods.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         t
       case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil ⇒
         c.error(p, s"ADT Root traits (trait $name) must be sealed.")
         t
-      case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil
-          if mods.hasFlag(ABSTRACT | SEALED) ⇒
+      case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil if mods.hasFlag(ABSTRACT | SEALED) ⇒
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         cls
       case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil ⇒
@@ -34,15 +32,12 @@ object ADT_QQ {
         c.error(p, s"ADT Roots (object $name) may not be Objects.")
         o
       // companions
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") ::
-          q"$o_mods object $o_name extends ..$o_parents { ..$o_body }" :: Nil
-          if mods.hasFlag(SEALED) ⇒
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: (mD: ModuleDef):: Nil if mods.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
-        t
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") ::
-          q"$o_mods object $o_name extends ..$o_parents { ..$o_body }" :: Nil ⇒
+        q"$t; $mD"
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: (mD: ModuleDef):: Nil ⇒
         c.error(p, s"ADT Root traits (trait $name) must be sealed.")
-        t
+        q"$t; $mD"
       // method definition
       case (d @ q"def $name = $body") :: Nil ⇒
         c.error(p, s"ADT Roots (def $name) may not be Methods.")
@@ -61,6 +56,9 @@ object ADT_QQ {
       case Nil ⇒
         c.error(p, s"Cannot ADT Validate an empty Tree.")
         reify {} .tree
+      case wtf ⇒
+        c.error(p, s"AST of ${wtf.size} and contents $wtf did not match anything :(")
+        throw new Exception()
     }
 
     c.Expr[Any](result)
