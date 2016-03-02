@@ -57,9 +57,23 @@ class ADTQQAnnotationSpec extends FlatSpec with MustMatchers {
     """.stripMargin must compile
   }
 
+  it should "Approve a sealed trait with type parameters" in {
+    """
+      | @ADT sealed trait Klang[T] {
+      |   def x: Int
+      | }
+    """.stripMargin must compile
+  }
+
   it should "Approve a sealed, abstract class" in {
     """
       | @ADT sealed abstract class Eggs
+    """.stripMargin must compile
+  }
+
+  it should "Approve a sealed, abstract class with type parameters" in {
+    """
+      | @ADT sealed abstract class Odersky[T]
     """.stripMargin must compile
   }
 
