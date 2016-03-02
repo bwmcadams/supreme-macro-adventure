@@ -2,69 +2,65 @@ package codes.bytes.macros_intro.macros
 
 import scala.annotation.{ compileTimeOnly, StaticAnnotation }
 import scala.language.postfixOps
+import scala.reflect.macros.whitebox
 
-import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
 
 object ADT_QQ {
-  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+  def impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
     import Flag._
 
+    val p = c.enclosingPosition
+
     val inputs = annottees.map(_.tree).toList
 
-    val result: Tree = {
-      // check if it meets the requirements for what can be annotated
-      inputs match {
-        case (t @ q"$mods trait $name") :: Nil ⇒
-          if (!mods.hasFlag(SEALED)) {
-            c.error(c.enclosingPosition, s"ADT Root traits (trait $name) must be sealed.")
-          } else {
-            c.info(c.enclosingPosition, s"ADT Root trait $name sanity checks OK.", force = true)
-          }
-          t
-        case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil ⇒
-          if (!mods.hasFlag(ABSTRACT)) {
-            c.error(c.enclosingPosition, s"ADT Root classes (class $name) must be abstract.")
-          } else if (!mods.hasFlag(SEALED)) {
-            // class that's abstract
-            c.error(c.enclosingPosition, s"ADT Root classes (abstract class $name) must be sealed.")
-          } else {
-            c.info(c.enclosingPosition, s"ADT Root class $name sanity checks OK.", force = true)
-          }
-          cls
-        /**
-         * According to the docs, if you annotate a *class* with a companion,
-         * the class and companion will be sent in (e.g., List(class, object) for
-         * entry Tree. If you annotate an *object* with a companion, only the object
-         * is passed in.
-         *
-         *  Using ClassDef match, Scala will refuse to accept returned Tree unless it
-         *  includes both companions sent in. For QuasiQuotes it seems to ignore that,
-         *  yet the object still works fine after Macro transform.
-         */
-        case (o @ q"$mods object $name") :: Nil ⇒
-          c.error(c.enclosingPosition, s"ADT Roots (object $name) may not be Objects.")
-          o
-        // method definition
-        case (d @ q"def $name = $body") :: Nil ⇒
-          c.error(c.enclosingPosition, s"ADT Roots (def $name) may not be Methods.")
-          d
-        // immutable variable definition
-        case (v @ q"val $name = $value") :: Nil ⇒
-          c.error(c.enclosingPosition, s"ADT Roots (val $name) may not be Variables.")
-          v
-        case (v @ q"var $name = $value") :: Nil ⇒
-          c.error(c.enclosingPosition, s"ADT Roots (var $name) may not be Variables.")
-          v
-        // I checked and you cannot annotate a package object at all
-        case x :: Nil ⇒
-          c.error(c.enclosingPosition, s"! Invalid ADT Root ($x) ${x.getClass}")
-          x
-        case Nil ⇒
-          c.error(c.enclosingPosition, s"Cannot ADT Validate an empty Tree.")
-          reify {} .tree
-      }
+    val result: Tree = inputs match {
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil
+          if mods.hasFlag(SEALED) ⇒
+        c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
+        t
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil ⇒
+        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+        t
+      case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil
+          if mods.hasFlag(ABSTRACT | SEALED) ⇒
+        c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
+        cls
+      case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil ⇒
+        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
+        cls
+      case (o @ q"$mods object $name") :: Nil ⇒
+        c.error(p, s"ADT Roots (object $name) may not be Objects.")
+        o
+      // companions
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") ::
+          q"$o_mods object $o_name extends ..$o_parents { ..$o_body }" :: Nil
+          if mods.hasFlag(SEALED) ⇒
+        c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
+        t
+      case (t @ q"$mods trait $name extends ..$parents { ..$body }") ::
+          q"$o_mods object $o_name extends ..$o_parents { ..$o_body }" :: Nil ⇒
+        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+        t
+      // method definition
+      case (d @ q"def $name = $body") :: Nil ⇒
+        c.error(p, s"ADT Roots (def $name) may not be Methods.")
+        d
+      // immutable variable definition
+      case (v @ q"val $name = $value") :: Nil ⇒
+        c.error(p, s"ADT Roots (val $name) may not be Variables.")
+        v
+      case (v @ q"var $name = $value") :: Nil ⇒
+        c.error(p, s"ADT Roots (var $name) may not be Variables.")
+        v
+      // I checked and you cannot annotate a package object at all
+      case x :: Nil ⇒
+        c.error(p, s"! Invalid ADT Root ($x) ${x.getClass}")
+        x
+      case Nil ⇒
+        c.error(p, s"Cannot ADT Validate an empty Tree.")
+        reify {} .tree
     }
 
     c.Expr[Any](result)

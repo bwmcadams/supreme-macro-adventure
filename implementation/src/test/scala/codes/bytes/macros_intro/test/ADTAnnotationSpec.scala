@@ -1,7 +1,7 @@
 package codes.bytes.macros_intro.test
 
 import codes.bytes.macros_intro.macros.ADTMacros
-import codes.bytes.macros_intro.macros.ADT
+import codes.bytes.macros_intro.macros.{ADT_QQ ⇒ ADT}
 import org.scalatest.{FlatSpec, MustMatchers}
 
 class ADTAnnotationSpec extends FlatSpec with MustMatchers {

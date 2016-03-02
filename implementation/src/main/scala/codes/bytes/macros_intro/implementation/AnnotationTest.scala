@@ -1,6 +1,6 @@
 package codes.bytes.macros_intro.implementation
 
-import codes.bytes.macros_intro.macros.{ADTMacros, ADT, hello}
+import codes.bytes.macros_intro.macros.{ADTMacros, ADT_QQ ⇒ ADT, hello}
 import ADTMacros._
 
 @ADT
