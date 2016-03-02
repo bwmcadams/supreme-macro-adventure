@@ -16,28 +16,34 @@ object ADT_QQ {
     val inputs = annottees.map(_.tree).toList
 
     val result: Tree = inputs match {
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil if mods.hasFlag(SEALED) ⇒
+      case (t @ q"$flags trait $name extends ..$parents { ..$body }") :: Nil if flags.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         t
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: Nil ⇒
+      case (t @ q"$flags trait $name extends ..$parents { ..$body }") :: Nil ⇒
         c.error(p, s"ADT Root traits (trait $name) must be sealed.")
         t
-      case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil if mods.hasFlag(ABSTRACT | SEALED) ⇒
+      case (cls @ q"$flags class $name extends ..$parents { ..$body }") :: Nil if flags.hasFlag(ABSTRACT) && flags.hasFlag(SEALED) ⇒ // there's no bitwise AND (just OR) on Flags
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         cls
-      case (cls @ q"$mods class $name extends ..$parents { ..$body }") :: Nil ⇒
+      case (cls @ q"$flags class $name extends ..$parents { ..$body }") :: Nil ⇒
         c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
         cls
-      case (o @ q"$mods object $name") :: Nil ⇒
+      case (o @ q"$flags object $name") :: Nil ⇒
         c.error(p, s"ADT Roots (object $name) may not be Objects.")
         o
       // companions
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: (mD: ModuleDef):: Nil if mods.hasFlag(SEALED) ⇒
+      case (t @ q"$flags trait $name extends ..$parents { ..$body }") :: (mD: ModuleDef):: Nil if flags.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         q"$t; $mD"
-      case (t @ q"$mods trait $name extends ..$parents { ..$body }") :: (mD: ModuleDef):: Nil ⇒
+      case (t @ q"$flags trait $name extends ..$parents { ..$body }") :: (mD: ModuleDef) :: Nil ⇒
         c.error(p, s"ADT Root traits (trait $name) must be sealed.")
         q"$t; $mD"
+      case (cls @ q"$flags class $name extends ..$parents { ..$body }") :: (mD: ModuleDef) :: Nil⇒ // there's no bitwise AND (just OR) on Flags
+        c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
+        q"$cls; $mD"
+      case (cls @ q"$flags class $name extends ..$parents { ..$body }") :: (mD: ModuleDef) :: Nil ⇒
+        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
+        q"$cls; $mD"
       // method definition
       case (d @ q"def $name = $body") :: Nil ⇒
         c.error(p, s"ADT Roots (def $name) may not be Methods.")
@@ -56,9 +62,6 @@ object ADT_QQ {
       case Nil ⇒
         c.error(p, s"Cannot ADT Validate an empty Tree.")
         reify {} .tree
-      case wtf ⇒
-        c.error(p, s"AST of ${wtf.size} and contents $wtf did not match anything :(")
-        throw new Exception()
     }
 
     c.Expr[Any](result)

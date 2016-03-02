@@ -246,6 +246,7 @@ class StringInterp {
 - There is one case when we'll get more than one ‘annottee’: Companion Objects.
 - If you annotate a class with a companion object, *both* are passed in.
 - If you annotate an object with a companion class, only the object is passed in.
+- You must return *both* from your macro, or you get an error: `top-level class with companion can only expand into a block consisting in eponymous companions`
 
 ---
 ### The Code...

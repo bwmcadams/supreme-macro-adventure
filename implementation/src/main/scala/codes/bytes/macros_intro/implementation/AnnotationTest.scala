@@ -11,8 +11,6 @@ sealed trait Spam {
 final case class SpamRight(x: Int) extends Spam
 final case class SpamLeft(x: Int) extends Spam
 
-
-
 @ADT
 sealed abstract class Eggs
 
@@ -32,7 +30,7 @@ object TestCompanionsClass {
 
 
 @ADT
-sealed abstract class TestCompanionsTrait {
+sealed trait TestCompanionsTrait {
   def check = "Test Companion Trait"
 }
 
