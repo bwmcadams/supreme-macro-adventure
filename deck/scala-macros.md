@@ -137,11 +137,12 @@ class StringInterp {
 ---
 ### Enter The Macro
 
-- Since Scala 2.10, Macros have shipped as an experimental feature in Scala 2.10.
+- Since Scala 2.10, Macros have shipped as an experimental feature.
 - Seem to have been adopted fairly quickly: I see them all over the place.
 - By example, more than a few SQL Libraries have added `sql` string interpolation prefixes which generate proper JDBC Queries.
 - AST Knowledge can be somewhat avoided, with some really cool tools to generate it for you.
 - Much easier than compiler plugins, to add real enhanced functionality to your projects.
+- NOTE: You need to define your macros in a *separate* project / library from anywhere you call it.
 
 ---
 
@@ -158,7 +159,7 @@ class StringInterp {
 - You can learn more about Macro Paradise at [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
 
 
-[^¶]: focused on reliability with the current production release of Scala
+[^¶]: Focused on reliability with the current production release of Scala.
 
 ---
 
@@ -227,20 +228,20 @@ class StringInterp {
 - So how does it all work?
 - First, we need to define an annotation:
 
-```scala
-@compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
-final class ADT extends StaticAnnotation {
-  def macroTransform(annottees: Any*): Any = macro ADTMacros.annotation_impl
-}
-```
+    ```scala
+    @compileTimeOnly("Enable Macro Paradise for Expansion of Annotations via Macros.")
+      final class ADT extends StaticAnnotation {
+        def macroTransform(annottees: Any*): Any = macro ADTMacros.annotation_impl
+      }
+    ```
 
 - `@compileTimeOnly` makes sure we've enabled Macro Paradise: otherwise, our annotation fails to expand at compile time.
 - `macroTransform` delegates to an actual Macro implementation which validates our ‘annottees’.
 
 ---
 ### ADT Validation
+#### A quick note on the ‘annottees’ variable...
 
-- A quick note on our ‘annottees’ variable...
 - This annotation macro is called *once per annotated class*. The fact that it has to take varargs can be confusing.
 - There is one case when we'll get more than one ‘annottee’: Companion Objects.
 - If you annotate a class with a companion object, *both* are passed in.
@@ -310,130 +311,61 @@ final class ADT extends StaticAnnotation {
 ```
 
 ---
+### Validating "Valid" Possibilities
+
+```scala
+  def validateClassDef(cD: c.universe.ClassDef, mods: c.universe.Modifiers,
+    name: c.universe.TypeName, tparams: List[c.universe.TypeDef],
+    impl: c.universe.Template, companion: Option[ModuleDef]): c.universe.Tree = {
+
+    if (mods.hasFlag(TRAIT)) {
+      if (!mods.hasFlag(SEALED)) {
+        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+      }
+      else {
+        c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
+      }
+      companion match {
+        case Some(mD) ⇒ q"$cD; $mD"
+        case None ⇒ cD
+      }
+
+```
+
+---
+### Validating "Valid" Possibilities
+
+```scala
+    } else if (!mods.hasFlag(ABSTRACT)) {
+      c.error(p, s"ADT Root classes (class $name) must be abstract.")
+      cD
+    } else if (!mods.hasFlag(SEALED)) {
+      // class that's abstract
+      c.error(p, s"ADT Root classes (abstract class $name) must be sealed.")
+      cD
+    } else {
+      c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
+      companion match {
+         // Using ClassDef match, Scala requires tree includes all annottees (companions) sent in.
+        case Some(mD) ⇒ q"$cD; $mD"
+        case None ⇒ cD
+      }
+    }
+  }
+
+```
+
+---
+
 
 ![original fit](images/brilliant-pinkie-pie.png)
 
 ---
 
-### Macros, The AST, and Def Macros
+### Macros & The AST
 
 - Macros are still really built with the AST, but lately Macros provide tools to generate ASTs from code (which is what I use, mostly).
 - The first, and simplest, is `reify`, which we can use to generate an AST for us.
-- Let's look first at ‘Def’ Macros, which let us write Macro methods.[^‡]
-
-[^‡]: I've stolen some code from the official Macros guide for this.
-
----
-
-### A Def Macro for printf
-
-First, we need to define a `printf` method which will ‘proxy’ our Macro definition:
-
-```scala
-// Import needed if you're *writing* a macro
-import scala.language.experimental.macros
-def printf(format: String, params: Any*): Unit = macro printf_impl
-```
-
-This is our macro *definition*. We also need an *implementation*.
-
----
-
-### A Def Macro for printf
-
-```scala
-import scala.reflect.macros.Context
-def printf_impl(c: Context)(format: c.Expr[String],
-                            params: c.Expr[Any]*): c.Expr[Unit] = ???
-```
-
-We'll also want to import (in our `printf_impl` body) `c.universe._`.
-This provides a lot of routine types & functions (such as `reify`).
-
----
-
-### Generating The Code for `printf`
-
-Here's our first problem: when `printf` calls `printf_impl` the Macro implementation converts all of our *values* into *syntax trees*. But we can use the AST case classes to extract:
-
-```scala
-val Literal(Constant(s_format: String)) = format.tree
-```
-
----
-
-### Generating The Code for `printf`
-
-We then need code to split out the format string, and substitute parameters:
-
-```scala
-val paramsStack = Stack[Tree]((params map (_.tree)): _*)
-val refs = s_format.split("(?<=%[\\w%])|(?=%[\\w%])") map {
-  case "%d" => precompute(paramsStack.pop, typeOf[Int])
-  case "%s" => precompute(paramsStack.pop, typeOf[String])
-  case "%%" => Literal(Constant("%"))
-  case part => Literal(Constant(part))
-}
-```
-
-You'll note some references to `precompute`... which is another fun ball full of AST.
-
----
-
-### Generating The Code for `printf`
-
-`precompute` (a function we write ourselves) helps us convert our varargs `params` into AST statements we can reuse:
-
-```scala
-val evals = ListBuffer[ValDef]()
-def precompute(value: Tree, tpe: Type): Ident = {
-  val freshName = TermName(c.fresh("eval$"))
-  evals += ValDef(Modifiers(), freshName, TypeTree(tpe), value)
-  Ident(freshName)
-}
-```
-
-In particular, we're generating a substitute name, and saving into `evals` all of the params into value definitions.
-
----
-
-### Generating The Code for `printf`
-
-Lastly, we stick it all together. Here, `reify` is used to simplify the need to generate AST objects, doing it *for* us:
-
-```scala
-val stats = evals ++ refs.map { ref =>
-  reify( print(c.Expr[Any](ref).splice) ).tree
-}
-// our return from `printf_impl`
-c.Expr[Unit](Block(stats.toList, Literal(Constant(()))))
-```
-
-Note we're using `print`, not `println`, so each individual `ref` (a.k.a block of string) is printed, using a value from `evals`. `splice` helps us graft a `reify` block onto the syntax tree.
-
----
-
-### Using `printf`
-
-It works pretty much as you'd expect:[^*]
-
-```scala
-scala> printf("%s: %d", "The Answer", 42)
-The Answer: 42
-```
-
-We could, on the console, use `reify` to see how Scala expands our code:
-
-```scala
-import scala.reflect.runtime.universe._
-reify(printf("%s: %d", "The Answer", 42))
-
-res1: reflect.runtime.universe.Expr[Unit] =
-  Expr[Unit](PrintfMacros.printf("%s: %d", "The Answer", 42))
-```
-
-
-[^*]: NOTE: You need to define your macros in a *separate* project / library from anywhere you call it.
 
 ---
 
@@ -467,7 +399,7 @@ println(showRaw(reify {
 
 - There's really no way – yet – to avoid the AST Completely. But the Macro system continues to improve to give us ways to use it less and less.
 - Quasiquotes, added in Scala 2.11, lets us write the equivalent of String Interpolation code that ‘evals’ to a Syntax Tree.
-- We aren't going to go through a Macro build with Quasiquotes (yet), but let's look at what they do in the console...
+- We aren't going to have time to walk through a Macro built with Quasiquotes, but let's look at what they do in the console...
 
 ---
 
@@ -505,7 +437,11 @@ res4: reflect.runtime.universe.DefDef =
 #### Writing Some Trees
 
 ```scala
-scala> val wtfException = q"case class OMGWTFBBQ(message: String = null) extends Exception with scala.util.control.NoStackTrace"
+scala> val wtfException = q"""
+case class OMGWTFBBQ(message: String = null)
+    extends Exception
+    with scala.util.control.NoStackTrace
+"""
 
 wtfException: reflect.runtime.universe.ClassDef =
 case class OMGWTFBBQ extends Exception
@@ -528,7 +464,8 @@ case class OMGWTFBBQ extends Exception
 It turns out, Quasiquotes can do extraction too, which I find sort of fun.
 
 ```scala
-scala> val q"case class $cname(..$params) extends $parent with ..$traits { ..$body }" = wtfException
+scala> val q"""case class $cname(..$params) extends $parent with ..$traits { ..$body }""" = wtfException
+
 cname: reflect.runtime.universe.TypeName = OMGWTFBBQ
 params: List[reflect.runtime.universe.ValDef] = List(<caseaccessor> <paramaccessor> val message: String = null)
 parent: reflect.runtime.universe.Tree = Exception
@@ -537,7 +474,6 @@ body: List[reflect.runtime.universe.Tree] = List()
 ```
 
 
-^ There's a pretty cool demo of Quasiquotes to write a *Macro* yet to come...
 
 ---
 
@@ -545,15 +481,14 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ---
 
-
 ### Closing Thoughts
 
-Macros are undoubtedly cool, and rapidly evolving. But be cautious.
+- Macros are undoubtedly cool, and rapidly evolving. But be cautious.
 
-> “When all you have is a hammer, everything starts to look like a thumb...”
+- > “When all you have is a hammer, everything starts to look like a thumb...”
 -- me
 
-Macros can enable great development, but also hinder it if overused. Think carefully about their introduction, and their impact on your codebase.
+- Macros can enable great development, but also hinder it if overused. Think carefully about their introduction, and their impact on your codebase.
 
 ---
 
