@@ -14,7 +14,7 @@ build-lists: true
 ---
 
 ##[fit] What Are Macros?
-
+###### (There's some really good [documentation](http://docs.scala-lang.org/overviews/macros/overview.html))
 ---
 
 ![original fit](images/futurama-bender-not-reading.gif)
@@ -29,11 +29,12 @@ build-lists: true
 
 - ‘metaprogramming’, from the Latin: ‘WTF?’.
 - I mean, “code that writes code”.
-- Write ‘extensions’ to Scala which expand out to more complicated code when used. Evaluated at compile time.
+- Write ‘extensions’ to Scala which expand out to more complicated code when used. Evaluated/expanded at compile time.
 
 ---
 
 ### Examples of Macros
+#### Def Macros
 
 - Facility for us to write powerful new syntax that feels ‘built-in’, such as Shapeless' “This Shouldn't Compile” `illTyped` macro...
 
@@ -45,9 +46,13 @@ build-lists: true
                 ^
     ```
 
+^ ScalaTest has a version of this which is based on illTyped, which we'll see in a bit...
+
 ---
 
 ### Examples of Macros
+#### Annotation Macros
+
 - Annotations that rewrite / expand code:
 
     ```scala
@@ -67,7 +72,7 @@ build-lists: true
 
 - I'm pretty new to this Macro thing, and hoping to share knowledge from a beginner's standpoint.
 - Without naming names, *many* Macros talks are given by Deeply Scary Sorcerers and Demigods who sometimes forget how hard this stuff is for newbies.
-- Let's take a look at this through *really fresh*, profusely bleeding, eyeballs.
+- Let's take a look at this through *really fresh*, profusely bleeding eyeballs.
 
 ^ ... and learn just enough to be dangerous to ourselves (and others).
 
@@ -139,7 +144,6 @@ class StringInterp {
 
 - Since Scala 2.10, Macros have shipped as an experimental feature.
 - Seem to have been adopted fairly quickly: I see them all over the place.
-- By example, more than a few SQL Libraries have added `sql` string interpolation prefixes which generate proper JDBC Queries.
 - AST Knowledge can be somewhat avoided, with some really cool tools to generate it for you.
 - Much easier than compiler plugins, to add real enhanced functionality to your projects.
 - NOTE: You need to define your macros in a *separate* project / library from anywhere you call it.
@@ -152,10 +156,10 @@ class StringInterp {
 ---
 ### Macro Paradise
 
-- It is worth mentioning that the Macro project for Scala is evolving *quickly*.
-- They release and add new features *far more frequently* than Scala does.
+- The Macro project for Scala is evolving *quickly*.
+    - They release and add new features *far more frequently* than Scala does.
 - “Macro Paradise” is a compiler plugin meant to bring the Macro improvements into Scala[^¶] as they become available.
-- One of the features currently in Macro Paradise is Macro Annotations.
+    - One of the features currently existing purely in Macro Paradise is Macro Annotations.
 - You can learn more about Macro Paradise at [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
 
 
@@ -166,8 +170,8 @@ class StringInterp {
 ### Macro Annotations
 #### ADT Validation
 
-- Macro Annotations are designed to let us build annotations that expand via Macros.
-- The possibilites are endless, but I've written a Macro that verifies the "Root" type of an ADT is valid. The rules:
+- Macro Annotations let us build annotations that expand via Macros.
+- I've written a Macro that verifies the "Root" type of an ADT is valid. The rules:
     - The root type must be either a trait or an abstract class.
     - The root type must be sealed.
 - I've done this with AST manipulation to demo what that looks like.
@@ -223,9 +227,29 @@ class StringInterp {
  ```
 
 ---
+
+### Macro Annotations
+#### ADT Validation
+
+```scala
+  it should "Approve a sealed trait with type parameters" in {
+    """
+      | @ADT sealed trait Klang[T] {
+      |   def x: Int
+      | }
+    """.stripMargin must compile
+  }
+
+  it should "Approve a sealed, abstract class with type parameters" in {
+    """
+      | @ADT sealed abstract class Odersky[T]
+    """.stripMargin must compile
+  }
+```
+
+---
 ### ADT Validation
 
-- So how does it all work?
 - First, we need to define an annotation:
 
     ```scala
@@ -243,13 +267,14 @@ class StringInterp {
 #### A quick note on the ‘annottees’ variable...
 
 - This annotation macro is called *once per annotated class*. The fact that it has to take varargs can be confusing.
-- There is one case when we'll get more than one ‘annottee’: Companion Objects.
 - If you annotate a class with a companion object, *both* are passed in.
-- If you annotate an object with a companion class, only the object is passed in.
+    - If you annotate an object with a companion class, only the object is passed in.
 - You must return *both* from your macro, or you get an error: `top-level class with companion can only expand into a block consisting in eponymous companions`
 
 ---
 ### The Code...
+
+We *could* do this with the AST...
 
 ```scala
   def annotation_impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
@@ -277,6 +302,7 @@ class StringInterp {
 
 ```scala
   inputs match {
+    // both classes & traits
     case (cD @ ClassDef(mods, name, tparams, impl)) :: Nil ⇒
       validateClassDef(cD, mods, name, tparams, impl, companion = None)
     // annotated class with companion object.
@@ -285,22 +311,13 @@ class StringInterp {
     case (o @ ModuleDef(_, name, _)) :: Nil ⇒
       c.error(p, s"ADT Roots (object $name) may not be Objects.")
       o
-    // ... corner cases to follow
+    // ... corner cases such as vals, vars, defs
 ```
 
 ---
-
 ### Matching Our Tree
 
 ```scala
-    case (d @ DefDef(mods, name, _, _, _, _)) :: Nil ⇒
-      c.error(p, s"ADT Roots (def $name) may not be Methods.")
-      d
-    case (d @ ValDef(mods, name, _, _)) :: Nil ⇒
-      if (mods.hasFlag(Flag.MUTABLE)) c.error(p, s"ADT Roots (var $name) may not be Variables.")
-      else c.error(p, s"ADT Roots (val $name) may not be Variables.")
-      d
-    // Not sure what would hit here, I checked and you cannot annotate a package object at all
     case x :: Nil ⇒
       c.error(p, s"Invalid ADT Root ($x) [${x.getClass}].")
       x
@@ -308,7 +325,6 @@ class StringInterp {
       c.error(p, "Cannot validate ADT Root of empty Tree.")
       // the errors should cause us to stop before this but needed to match up our match type
       reify {}.tree
-  }
 ```
 
 ---
@@ -359,7 +375,7 @@ class StringInterp {
 ---
 
 
-![original fit](images/brilliant-pinkie-pie.png)
+![original fit](images/billmurray-chug-whiskey.gif)
 
 ---
 
@@ -400,7 +416,9 @@ println(showRaw(reify {
 
 - There's really no way – yet – to avoid the AST Completely. But the Macro system continues to improve to give us ways to use it less and less.
 - Quasiquotes, added in Scala 2.11, lets us write the equivalent of String Interpolation code that ‘evals’ to a Syntax Tree.
-- We aren't going to have time to walk through a Macro built with Quasiquotes, but let's look at what they do in the console...
+- We'll introduce Quasiquotes, and, time permitting, we're going to also look at a Quasiquotes version of the ADT Macro.
+
+^ The implementation is half the number of lines of the AST one.
 
 ---
 
@@ -465,10 +483,13 @@ case class OMGWTFBBQ extends Exception
 It turns out, Quasiquotes can do extraction too, which I find sort of fun.
 
 ```scala
-scala> val q"""case class $cname(..$params) extends $parent with ..$traits { ..$body }""" = wtfException
+scala> val q"""case class $cname[..$tparams](..$params)
+               extends $parent with ..$traits { ..$body }""" = wtfException
 
 cname: reflect.runtime.universe.TypeName = OMGWTFBBQ
-params: List[reflect.runtime.universe.ValDef] = List(<caseaccessor> <paramaccessor> val message: String = null)
+tparams: List[reflect.runtime.universe.TypeDef] = List()
+params: List[reflect.runtime.universe.ValDef] =
+    List(<caseaccessor> <paramaccessor> val message: String = null)
 parent: reflect.runtime.universe.Tree = Exception
 traits: List[reflect.runtime.universe.Tree] = List(scala.util.control.NoStackTrace)
 body: List[reflect.runtime.universe.Tree] = List()
@@ -478,7 +499,83 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ---
 
-![original fit](images/mrca.gif)
+![original fit](images/brilliant-pinkie-pie.png)
+
+---
+
+### ADT Macro with Quasiquotes
+
+- With Quasiquotes, we can implement our ADT in a pure match with pattern guards.
+- It is nearly half the # of lines.
+
+---
+
+#### Traits & Classes Validation
+
+```scala
+    val result: Tree = inputs match {
+      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil 
+        if flags.hasFlag(SEALED) ⇒
+        c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
+        t
+      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
+        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+        t
+```
+
+---
+
+#### Classes Validation
+
+```scala
+      // there's no bitwise AND (just OR) on Flags
+      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") :: Nil
+        if flags.hasFlag(ABSTRACT) && flags.hasFlag(SEALED) ⇒
+        c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
+        cls
+      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
+        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
+        cls
+```
+---
+
+#### Singletons & Trait Companions Validation
+
+```scala
+      case (o @ q"$flags object $name") :: Nil ⇒
+        c.error(p, s"ADT Roots (object $name) may not be Objects.")
+        o
+      // companions
+      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") ::
+        (mD: ModuleDef):: Nil
+        if flags.hasFlag(SEALED) ⇒
+        c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
+        q"$t; $mD"
+      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") ::
+        (mD: ModuleDef) :: Nil ⇒
+        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+        q"$t; $mD"
+```
+
+---
+
+#### Singletons & Trait Companions Validation
+
+```scala
+      // there's no bitwise AND (just OR) on Flags
+      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") ::
+        (mD: ModuleDef) :: Nil ⇒
+        c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
+        q"$cls; $mD"
+      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") 
+        :: (mD: ModuleDef) :: Nil ⇒
+        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
+        q"$cls; $mD"
+```
+
+---
+
+![original fit](images/futurama-80s-awesometothemax.gif)
 
 ---
 
