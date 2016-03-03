@@ -6,7 +6,7 @@ build-lists: true
 ![original](images/major-kong-bomb.jpg)
 
 #[fit] Scala Macros,
-###[fit] or How I Learned To Stop Worrying and Mumble "WTF?!?!"
+###[fit] or How I Learned To Stop Worrying and Mumbling “WTF?!?!”
 
 
 #### Brendan McAdams – <brendan@boldradius.com>
