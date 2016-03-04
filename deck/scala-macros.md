@@ -3,13 +3,15 @@ slidenumbers: true
 autoscale: true
 build-lists: true
 
-![original](images/major-kong-bomb.jpg)
+![original](images/mickey-sorcerer-floating-maelstrom.png)
 
-#[fit] Scala Macros,
-###[fit] or How I Learned To Stop Worrying and Mumbling “WTF?!?!”
+#[fit] Scala Macros for Mortals,
+###[fit] or: How I Learned To Stop Worrying and Mumbling “WTF?!?!”
+<br>
+<br>
+<br>
 
-
-#### Brendan McAdams – <brendan@boldradius.com>
+#### Brendan McAdams \<brendan@boldradius.com\>
 #### @rit
 ---
 
@@ -29,13 +31,15 @@ build-lists: true
 
 - ‘metaprogramming’, from the Latin: ‘WTF?’.
 - I mean, “code that writes code”.
-- Write ‘extensions’ to Scala which expand out to more complicated code when used. Evaluated/expanded at compile time.
+- Write ‘extensions’ to Scala which are evaluated/expanded at compile time.
+- Macros may generate new code or simply evaluate existing code.
 
 ---
 
 ### Examples of Macros
 #### Def Macros
 
+- Def Macros are used to write, essentially, new methods.
 - Facility for us to write powerful new syntax that feels ‘built-in’, such as Shapeless' “This Shouldn't Compile” `illTyped` macro...
 
     ```scala
@@ -53,7 +57,7 @@ build-lists: true
 ### Examples of Macros
 #### Annotation Macros
 
-- Annotations that rewrite / expand code:
+- Annotations Macros let us write annotations which can be then rewritten or expanded at compile time:
 
     ```scala
     @hello
@@ -80,7 +84,7 @@ build-lists: true
 
 ### Once Upon A Time...
 
-- We could pull off a lot of what we can do with Macros, by writing compiler plugins.
+- The only way to add compile time functionality to Scala was by writing compiler plugins.
 - Esoteric, harder to ship (i.e. user must include a compiler plugin), not a lot of docs or examples.
 - Required *deep* knowledge of the AST: Essentially generating new Scala by hand-coding ASTs.[^†]
 - I've done a little bit of compiler plugin work: the AST can be tough to deal with.[^§]
@@ -95,7 +99,7 @@ build-lists: true
 
 ---
 
-### A Light Taste of the AST
+### An AST Amuse Bouche
 
 Given a small piece of Scala code, what might the AST look like?
 
@@ -145,7 +149,7 @@ class StringInterp {
 - Since Scala 2.10, Macros have shipped as an experimental feature.
 - Seem to have been adopted fairly quickly: I see them all over the place.
 - AST Knowledge can be somewhat avoided, with some really cool tools to generate it for you.
-- Much easier than compiler plugins, to add real enhanced functionality to your projects.
+- Macros make enhancing Scala *much* easier than writing compiler plugins.
 - NOTE: You need to define your macros in a *separate* project / library from anywhere you call it.
 
 ---
@@ -158,7 +162,7 @@ class StringInterp {
 
 - The Macro project for Scala is evolving *quickly*.
     - They release and add new features *far more frequently* than Scala does.
-- “Macro Paradise” is a compiler plugin meant to bring the Macro improvements into Scala[^¶] as they become available.
+- “Macro Paradise” is a compiler plugin meant to bring Macro improvements into Scala[^¶] as they become available.
     - One of the features currently existing purely in Macro Paradise is Macro Annotations.
 - You can learn more about Macro Paradise at [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
 
@@ -296,6 +300,8 @@ We *could* do this with the AST...
 ```
 
 ^ Context comes in automatically with Macros.
+
+^ We could also *rewrite* the tree if we wanted.
 
 ---
 ### Matching Our Tree
@@ -441,7 +447,7 @@ Now we're ready to generate some Syntax Trees!
 ### Quasiquotes in Action
 #### Writing Some Trees
 
-Quasiquotes look like String Interpolation, but we place a `q` in front of our string instead of `s`:
+Quasiquotes look like String Interpolation, but we place a `q` in front of our string instead of `s`... and generate code!
 
 ```scala
 scala> q"def echo(str: String): String = str"
@@ -463,10 +469,8 @@ case class OMGWTFBBQ(message: String = null)
 """
 
 wtfException: reflect.runtime.universe.ClassDef =
-case class OMGWTFBBQ extends Exception
-    with scala.util.control.NoStackTrace
-    with scala.Product
-    with scala.Serializable {
+case class OMGWTFBBQ extends Exception with scala.util.control.NoStackTrace
+    with scala.Product with scala.Serializable {
   <caseaccessor> <paramaccessor> val message: String = _;
   def <init>(message: String = null) = {
     super.<init>();
@@ -480,7 +484,7 @@ case class OMGWTFBBQ extends Exception
 ---
 ### Extracting with Quasiquotes
 
-It turns out, Quasiquotes can do extraction too, which I find sort of fun.
+It turns out Quasiquotes can do extraction too, which I find sort of fun.
 
 ```scala
 scala> val q"""case class $cname[..$tparams](..$params)
@@ -496,6 +500,8 @@ body: List[reflect.runtime.universe.Tree] = List()
 ```
 
 
+
+^ ..$ is "splicing rank" and expects an Iterable[Tree]
 
 ---
 
@@ -514,11 +520,11 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ```scala
     val result: Tree = inputs match {
-      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil 
-        if flags.hasFlag(SEALED) ⇒
+      case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil
+        if mods.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         t
-      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
+      case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
         c.error(p, s"ADT Root traits (trait $name) must be sealed.")
         t
 ```
@@ -529,11 +535,11 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ```scala
       // there's no bitwise AND (just OR) on Flags
-      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") :: Nil
-        if flags.hasFlag(ABSTRACT) && flags.hasFlag(SEALED) ⇒
+      case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: Nil
+        if mods.hasFlag(ABSTRACT) && mods.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         cls
-      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
+      case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
         c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
         cls
 ```
@@ -542,16 +548,16 @@ body: List[reflect.runtime.universe.Tree] = List()
 #### Singletons & Trait Companions Validation
 
 ```scala
-      case (o @ q"$flags object $name") :: Nil ⇒
+      case (o @ q"$mods object $name") :: Nil ⇒
         c.error(p, s"ADT Roots (object $name) may not be Objects.")
         o
       // companions
-      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") ::
+      case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") ::
         (mD: ModuleDef):: Nil
-        if flags.hasFlag(SEALED) ⇒
+        if mods.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         q"$t; $mD"
-      case (t @ q"$flags trait $name[..$tparams] extends ..$parents { ..$body }") ::
+      case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") ::
         (mD: ModuleDef) :: Nil ⇒
         c.error(p, s"ADT Root traits (trait $name) must be sealed.")
         q"$t; $mD"
@@ -563,11 +569,11 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ```scala
       // there's no bitwise AND (just OR) on Flags
-      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") ::
+      case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") ::
         (mD: ModuleDef) :: Nil ⇒
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         q"$cls; $mD"
-      case (cls @ q"$flags class $name[..$tparams] extends ..$parents { ..$body }") 
+      case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }")
         :: (mD: ModuleDef) :: Nil ⇒
         c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
         q"$cls; $mD"

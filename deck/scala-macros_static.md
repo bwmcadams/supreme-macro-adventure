@@ -29,8 +29,8 @@ build-lists: true
 
 - ‘metaprogramming’, from the Latin: ‘WTF?’.
 - I mean, “code that writes code”.
-- Write ‘extensions’ to Scala which expand out to more complicated code when used. Evaluated/expanded at compile time.
-
+- Write ‘extensions’ to Scala which are evaluated/expanded at compile time.
+- Macros may generate new code or simply evaluate existing code.
 ---
 
 ### Examples of Macros
@@ -158,7 +158,7 @@ class StringInterp {
 
 - The Macro project for Scala is evolving *quickly*.
     - They release and add new features *far more frequently* than Scala does.
-- “Macro Paradise” is a compiler plugin meant to bring the Macro improvements into Scala[^¶] as they become available.
+- “Macro Paradise” is a compiler plugin meant to bring Macro improvements into Scala[^¶] as they become available.
     - One of the features currently existing purely in Macro Paradise is Macro Annotations.
 - You can learn more about Macro Paradise at [http://docs.scala-lang.org/overviews/macros/paradise.html](http://docs.scala-lang.org/overviews/macros/paradise.html)
 
