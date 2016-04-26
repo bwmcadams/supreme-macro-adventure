@@ -1,4 +1,4 @@
-footer: The "WTF" of Macros - NEScala '16
+footer: The "WTF" of Macros - flatMap(Oslo) '16
 slidenumbers: true
 autoscale: true
 build-lists: true
