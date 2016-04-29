@@ -11,7 +11,7 @@ build-lists: true
 <br>
 <br>
 
-#### Brendan McAdams \<brendan@boldradius.com\>
+#### Brendan McAdams \<brendan.mcadams@lightbend.com\>
 #### @rit
 ---
 
