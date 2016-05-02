@@ -427,23 +427,6 @@ println(showRaw(reify {
 ^ The implementation is half the number of lines of the AST one.
 
 ---
-
-### Quasiquotes in Action
-#### Setting Up Our Imports
-
-There are some implicits we need in scope for Quasiquotes Ah, the joy of imports...
-
-```scala
-import language.experimental.macros
-import reflect.macros.Context
-import scala.annotation.StaticAnnotation
-import scala.reflect.runtime.{universe => ru}
-import ru._
-```
-
-Now we're ready to generate some Syntax Trees!
-
----
 ### Quasiquotes in Action
 #### Writing Some Trees
 
