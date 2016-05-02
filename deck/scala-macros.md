@@ -315,8 +315,7 @@ We *could* do this with the AST...
     case (cD @ ClassDef(mods, name, tparams, impl)) :: (mD: ModuleDef) :: Nil ⇒
       validateClassDef(cD, mods, name, tparams, impl, companion = Some(mD))
     case (o @ ModuleDef(_, name, _)) :: Nil ⇒
-      c.error(p, s"ADT Roots (object $name) may not be Objects.")
-      o
+      c.abort(p, s"ADT Roots (object $name) may not be Objects.")
     // ... corner cases such as vals, vars, defs
 ```
 
@@ -325,12 +324,9 @@ We *could* do this with the AST...
 
 ```scala
     case x :: Nil ⇒
-      c.error(p, s"Invalid ADT Root ($x) [${x.getClass}].")
-      x
+      c.abort(p, s"Invalid ADT Root ($x) [${x.getClass}].")
     case Nil ⇒
-      c.error(p, "Cannot validate ADT Root of empty Tree.")
-      // the errors should cause us to stop before this but needed to match up our match type
-      reify {}.tree
+      c.abort(p, "Cannot validate ADT Root of empty Tree.")
 ```
 
 ---
@@ -343,7 +339,7 @@ We *could* do this with the AST...
 
     if (mods.hasFlag(TRAIT)) {
       if (!mods.hasFlag(SEALED)) {
-        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+        c.abort(p, s"ADT Root traits (trait $name) must be sealed.")
       }
       else {
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
@@ -360,12 +356,10 @@ We *could* do this with the AST...
 
 ```scala
     } else if (!mods.hasFlag(ABSTRACT)) {
-      c.error(p, s"ADT Root classes (class $name) must be abstract.")
-      cD
+      c.abort(p, s"ADT Root classes (class $name) must be abstract.")
     } else if (!mods.hasFlag(SEALED)) {
       // class that's abstract
-      c.error(p, s"ADT Root classes (abstract class $name) must be sealed.")
-      cD
+      c.abort(p, s"ADT Root classes (abstract class $name) must be sealed.")
     } else {
       c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
       companion match {
@@ -508,8 +502,7 @@ body: List[reflect.runtime.universe.Tree] = List()
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         t
       case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
-        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
-        t
+        c.abort(p, s"ADT Root traits (trait $name) must be sealed.")
 ```
 
 ---
@@ -523,8 +516,7 @@ body: List[reflect.runtime.universe.Tree] = List()
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         cls
       case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
-        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
-        cls
+        c.abort(p, s"ADT Root classes (class $name) must be abstract and sealed.")
 ```
 ---
 
@@ -532,8 +524,7 @@ body: List[reflect.runtime.universe.Tree] = List()
 
 ```scala
       case (o @ q"$mods object $name") :: Nil ⇒
-        c.error(p, s"ADT Roots (object $name) may not be Objects.")
-        o
+        c.abort(p, s"ADT Roots (object $name) may not be Objects.")
       // companions
       case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") ::
         (mD: ModuleDef):: Nil
@@ -542,8 +533,7 @@ body: List[reflect.runtime.universe.Tree] = List()
         q"$t; $mD"
       case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") ::
         (mD: ModuleDef) :: Nil ⇒
-        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
-        q"$t; $mD"
+        c.abort(p, s"ADT Root traits (trait $name) must be sealed.")
 ```
 
 ---
@@ -558,8 +548,7 @@ body: List[reflect.runtime.universe.Tree] = List()
         q"$cls; $mD"
       case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }")
         :: (mD: ModuleDef) :: Nil ⇒
-        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
-        q"$cls; $mD"
+        c.abort(p, s"ADT Root classes (class $name) must be abstract and sealed.")
 ```
 
 ---

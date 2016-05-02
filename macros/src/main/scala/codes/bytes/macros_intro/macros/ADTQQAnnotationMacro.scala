@@ -20,48 +20,38 @@ object ADT_QQ {
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         t
       case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
-        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
-        t
+        c.abort(p, s"ADT Root traits (trait $name) must be sealed.")
       case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: Nil if mods.hasFlag(ABSTRACT) && mods.hasFlag(SEALED) ⇒ // there's no bitwise AND (just OR) on Flags
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         cls
       case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: Nil ⇒
-        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
-        cls
+        c.abort(p, s"ADT Root classes (class $name) must be abstract and sealed.")
       case (o @ q"$mods object $name") :: Nil ⇒
-        c.error(p, s"ADT Roots (object $name) may not be Objects.")
-        o
+        c.abort(p, s"ADT Roots (object $name) may not be Objects.")
       // companions
       case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") :: (mD: ModuleDef):: Nil if mods.hasFlag(SEALED) ⇒
         c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
         q"$t; $mD"
       case (t @ q"$mods trait $name[..$tparams] extends ..$parents { ..$body }") :: (mD: ModuleDef) :: Nil ⇒
-        c.error(p, s"ADT Root traits (trait $name) must be sealed.")
-        q"$t; $mD"
+        c.abort(p, s"ADT Root traits (trait $name) must be sealed.")
       case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: (mD: ModuleDef) :: Nil⇒ // there's no bitwise AND (just OR) on Flags
         c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
         q"$cls; $mD"
       case (cls @ q"$mods class $name[..$tparams] extends ..$parents { ..$body }") :: (mD: ModuleDef) :: Nil ⇒
-        c.error(p, s"ADT Root classes (class $name) must be abstract and sealed.")
-        q"$cls; $mD"
+        c.abort(p, s"ADT Root classes (class $name) must be abstract and sealed.")
       // method definition
       case (d @ q"def $name = $body") :: Nil ⇒
-        c.error(p, s"ADT Roots (def $name) may not be Methods.")
-        d
+        c.abort(p, s"ADT Roots (def $name) may not be Methods.")
       // immutable variable definition
       case (v @ q"val $name = $value") :: Nil ⇒
-        c.error(p, s"ADT Roots (val $name) may not be Variables.")
-        v
+        c.abort(p, s"ADT Roots (val $name) may not be Variables.")
       case (v @ q"var $name = $value") :: Nil ⇒
-        c.error(p, s"ADT Roots (var $name) may not be Variables.")
-        v
+        c.abort(p, s"ADT Roots (var $name) may not be Variables.")
       // I checked and you cannot annotate a package object at all
       case x :: Nil ⇒
-        c.error(p, s"! Invalid ADT Root ($x) ${x.getClass}")
-        x
+        c.abort(p, s"! Invalid ADT Root ($x) ${x.getClass}")
       case Nil ⇒
-        c.error(p, s"Cannot ADT Validate an empty Tree.")
-        reify {} .tree
+        c.abort(p, s"Cannot ADT Validate an empty Tree.")
     }
 
     c.Expr[Any](result)

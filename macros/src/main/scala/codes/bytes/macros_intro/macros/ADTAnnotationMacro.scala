@@ -29,7 +29,7 @@ object ADTMacros {
 
         if (mods.hasFlag(TRAIT)) {
           if (!mods.hasFlag(SEALED)) {
-            c.error(p, s"ADT Root traits (trait $name) must be sealed.")
+            c.abort(p, s"ADT Root traits (trait $name) must be sealed.")
           }
           else {
             c.info(p, s"ADT Root trait $name sanity checks OK.", force = true)
@@ -49,12 +49,10 @@ object ADTMacros {
             case None ⇒ cD
           }
         } else if (!mods.hasFlag(ABSTRACT)) {
-          c.error(p, s"ADT Root classes (class $name) must be abstract.")
-          cD
+          c.abort(p, s"ADT Root classes (class $name) must be abstract.")
         } else if (!mods.hasFlag(SEALED)) {
           // class that's abstract
-          c.error(p, s"ADT Root classes (abstract class $name) must be sealed.")
-          cD
+          c.abort(p, s"ADT Root classes (abstract class $name) must be sealed.")
         } else {
           c.info(p, s"ADT Root class $name sanity checks OK.", force = true)
           companion match {
@@ -83,26 +81,19 @@ object ADTMacros {
         case (cD @ ClassDef(mods, name, tparams, impl)) :: (mD: ModuleDef) :: Nil ⇒
           validateClassDef(cD, mods, name, tparams, impl, companion = Some(mD))
         case (o @ ModuleDef(_, name, _)) :: Nil ⇒
-          c.error(p, s"ADT Roots (object $name) may not be Objects.")
-          o
+          c.abort(p, s"ADT Roots (object $name) may not be Objects.")
         case (d @ DefDef(mods, name, _, _, _, _)) :: Nil ⇒
-          c.error(p, s"ADT Roots (def $name) may not be Methods.")
-          d
+          c.abort(p, s"ADT Roots (def $name) may not be Methods.")
         case (d @ ValDef(mods, name, _, _)) :: Nil ⇒
           if (mods.hasFlag(Flag.MUTABLE))
-            c.error(p, s"ADT Roots (var $name) may not be Variables.")
+            c.abort(p, s"ADT Roots (var $name) may not be Variables.")
           else
-            c.error(p, s"ADT Roots (val $name) may not be Variables.")
-          d
+            c.abort(p, s"ADT Roots (val $name) may not be Variables.")
         // Not sure what would hit here, I checked and you cannot annotate a package object at all
         case x :: Nil ⇒
-          c.error(p, s"Invalid ADT Root ($x) [${x.getClass}].")
-          x
+          c.abort(p, s"Invalid ADT Root ($x) [${x.getClass}].")
         case Nil ⇒
-          c.error(p, "Cannot validate ADT Root of empty Tree.")
-          // the errors should cause us to stop before this,
-          // but needed to match up our match type
-          reify {}.tree
+          c.abort(p, "Cannot validate ADT Root of empty Tree.")
       }
     }
 
